@@ -1,0 +1,22 @@
+const express = require('express');
+const userController = require('../controllers/userController');
+const authController = require('../controllers/authController');
+
+const router = express.Router();
+
+router.post('/signup', authController.signup);
+router.post('/login', authController.login);
+router.get('/logout', authController.logout);
+
+router.use(authController.protect);
+
+router.get('/me', userController.getMe);
+router.patch('/updateMe', userController.updateMe);
+router.delete('/deleteMe', userController.deleteMe);
+router.patch('/updateMyPassword', userController.updatePassword);
+
+router.get('/favorites', userController.getFavoriteStations);
+router.post('/favorites', userController.addFavoriteStation);
+router.delete('/favorites/:stationId', userController.removeFavoriteStation);
+
+module.exports = router;
