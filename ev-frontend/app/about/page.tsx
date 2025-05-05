@@ -7,8 +7,6 @@ import { Shield, Zap, Coins, Users, Globe, Leaf } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react";
 
-
-
 export default function AboutPage() {
   const [data, setData] = useState(null)
 
@@ -18,15 +16,25 @@ export default function AboutPage() {
       .then((result) => setData(result))
       .catch((error) => console.error("Error fetching data:", error))
   }, [])
+  
   return (
     <div className="container mx-auto py-6 space-y-12">
+      {/* Hero Section */}
       <section className="space-y-6 text-center">
         <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl">About EV Chain</h1>
         <p className="max-w-[800px] mx-auto text-muted-foreground md:text-xl/relaxed">
           Revolutionizing electric vehicle charging with blockchain technology for a sustainable future.
         </p>
+        <div className="w-full h-64 md:h-96 rounded-xl overflow-hidden">
+          <img
+            src="https://images.unsplash.com/photo-1606229365485-93a3b8ee0385?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80"
+            alt="EV charging station"
+            className="w-full h-full object-cover"
+          />
+        </div>
       </section>
 
+      {/* Mission Section */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
         <div className="space-y-4">
           <h2 className="text-3xl font-bold">Our Mission</h2>
@@ -47,15 +55,16 @@ export default function AboutPage() {
             </Link>
           </div>
         </div>
-        <div className="rounded-lg overflow-hidden">
+        <div className="rounded-lg overflow-hidden shadow-lg">
           <img
-            src="/placeholder.svg?height=400&width=600"
-            alt="EV Charging Station"
+            src="/station.jpeg"
+            alt="Multiple EVs charging"
             className="w-full h-auto object-cover"
           />
         </div>
       </section>
 
+      {/* Technology Section */}
       <section className="space-y-6">
         <div className="text-center space-y-2">
           <h2 className="text-3xl font-bold">Our Technology</h2>
@@ -75,32 +84,45 @@ export default function AboutPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
                 <CardContent className="p-6 space-y-2">
-                  <Shield className="h-10 w-10 text-green-600 mb-2" />
-                  <h3 className="text-xl font-bold">Secure Transactions</h3>
-                  <p className="text-muted-foreground">
-                    All charging transactions are secured by blockchain technology, ensuring tamper-proof records and
-                    maximum security for users.
-                  </p>
+                  <div className="flex items-start gap-4">
+                    <Shield className="h-10 w-10 text-green-600 flex-shrink-0" />
+                    <div>
+                      <h3 className="text-xl font-bold">Secure Transactions</h3>
+                      <p className="text-muted-foreground">
+                        All charging transactions are secured by blockchain technology, ensuring tamper-proof records and
+                        maximum security for users.
+                      </p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardContent className="p-6 space-y-2">
-                  <Globe className="h-10 w-10 text-blue-600 mb-2" />
-                  <h3 className="text-xl font-bold">Decentralized Network</h3>
-                  <p className="text-muted-foreground">
-                    Our decentralized charging network eliminates intermediaries, reducing costs and increasing
-                    reliability for EV owners.
-                  </p>
+                  <div className="flex items-start gap-4">
+                    <Globe className="h-10 w-10 text-blue-600 flex-shrink-0" />
+                    <div>
+                      <h3 className="text-xl font-bold">Decentralized Network</h3>
+                      <p className="text-muted-foreground">
+                        Our decentralized charging network eliminates intermediaries, reducing costs and increasing
+                        reliability for EV owners.
+                      </p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
 
             <div className="bg-gray-50 p-6 rounded-lg">
               <h3 className="text-xl font-bold mb-4">How Our Blockchain Works</h3>
-              <div className="h-[200px] bg-white rounded-md flex items-center justify-center">
-                <p className="text-muted-foreground">Blockchain architecture diagram</p>
-              </div>
+              <img
+                src="https://images.unsplash.com/photo-1639762681057-408e52192e55?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80"
+                alt="Blockchain technology"
+                className="w-full h-64 object-cover rounded-md"
+              />
+              <p className="text-sm text-muted-foreground mt-2 text-center">
+                Our blockchain architecture ensures secure, transparent transactions for all charging sessions.
+              </p>
             </div>
           </TabsContent>
 
@@ -108,32 +130,45 @@ export default function AboutPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
                 <CardContent className="p-6 space-y-2">
-                  <Zap className="h-10 w-10 text-yellow-600 mb-2" />
-                  <h3 className="text-xl font-bold">Smart Charging</h3>
-                  <p className="text-muted-foreground">
-                    Our intelligent charging algorithms optimize charging times and costs based on grid demand and
-                    renewable energy availability.
-                  </p>
+                  <div className="flex items-start gap-4">
+                    <Zap className="h-10 w-10 text-yellow-600 flex-shrink-0" />
+                    <div>
+                      <h3 className="text-xl font-bold">Smart Charging</h3>
+                      <p className="text-muted-foreground">
+                        Our intelligent charging algorithms optimize charging times and costs based on grid demand and
+                        renewable energy availability.
+                      </p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardContent className="p-6 space-y-2">
-                  <Leaf className="h-10 w-10 text-green-600 mb-2" />
-                  <h3 className="text-xl font-bold">Renewable Integration</h3>
-                  <p className="text-muted-foreground">
-                    We prioritize charging from renewable energy sources, helping to reduce the carbon footprint of
-                    electric vehicles.
-                  </p>
+                  <div className="flex items-start gap-4">
+                    <Leaf className="h-10 w-10 text-green-600 flex-shrink-0" />
+                    <div>
+                      <h3 className="text-xl font-bold">Renewable Integration</h3>
+                      <p className="text-muted-foreground">
+                        We prioritize charging from renewable energy sources, helping to reduce the carbon footprint of
+                        electric vehicles.
+                      </p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
 
             <div className="bg-gray-50 p-6 rounded-lg">
               <h3 className="text-xl font-bold mb-4">Our Charging Network</h3>
-              <div className="h-[200px] bg-white rounded-md flex items-center justify-center">
-                <p className="text-muted-foreground">Charging network map</p>
-              </div>
+              <img
+                src="https://images.unsplash.com/photo-1606220838315-056192d5e927?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80"
+                alt="Charging network map"
+                className="w-full h-64 object-cover rounded-md"
+              />
+              <p className="text-sm text-muted-foreground mt-2 text-center">
+                Growing network of charging stations across the country
+              </p>
             </div>
           </TabsContent>
 
@@ -141,86 +176,116 @@ export default function AboutPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
                 <CardContent className="p-6 space-y-2">
-                  <Coins className="h-10 w-10 text-purple-600 mb-2" />
-                  <h3 className="text-xl font-bold">EV Tokens</h3>
-                  <p className="text-muted-foreground">
-                    Our native EV tokens (EVT) can be used for charging payments, rewards, and governance within our
-                    ecosystem.
-                  </p>
+                  <div className="flex items-start gap-4">
+                    <Coins className="h-10 w-10 text-purple-600 flex-shrink-0" />
+                    <div>
+                      <h3 className="text-xl font-bold">EV Tokens</h3>
+                      <p className="text-muted-foreground">
+                        Our native EV tokens (EVT) can be used for charging payments, rewards, and governance within our
+                        ecosystem.
+                      </p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardContent className="p-6 space-y-2">
-                  <Users className="h-10 w-10 text-blue-600 mb-2" />
-                  <h3 className="text-xl font-bold">Community Governance</h3>
-                  <p className="text-muted-foreground">
-                    Token holders can participate in platform governance, voting on key decisions and network upgrades.
-                  </p>
+                  <div className="flex items-start gap-4">
+                    <Users className="h-10 w-10 text-blue-600 flex-shrink-0" />
+                    <div>
+                      <h3 className="text-xl font-bold">Community Governance</h3>
+                      <p className="text-muted-foreground">
+                        Token holders can participate in platform governance, voting on key decisions and network upgrades.
+                      </p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
 
             <div className="bg-gray-50 p-6 rounded-lg">
               <h3 className="text-xl font-bold mb-4">Token Economics</h3>
-              <div className="h-[200px] bg-white rounded-md flex items-center justify-center">
-                <p className="text-muted-foreground">Token distribution chart</p>
-              </div>
+              <img
+                src="https://images.unsplash.com/photo-1621761191319-c6fb62004040?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80"
+                alt="Token economy visualization"
+                className="w-full h-64 object-cover rounded-md"
+              />
+              <p className="text-sm text-muted-foreground mt-2 text-center">
+                Sustainable token model designed for long-term growth
+              </p>
             </div>
           </TabsContent>
         </Tabs>
       </section>
 
+      {/* Team Section */}
       <section className="space-y-6">
         <div className="text-center space-y-2">
           <h2 className="text-3xl font-bold">Our Team</h2>
           <p className="max-w-[800px] mx-auto text-muted-foreground">Meet the passionate experts behind EV Chain.</p>
         </div>
-
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {[
-            { name: "Alex Johnson", role: "CEO & Founder", image: "/placeholder.svg?height=300&width=300" },
-            { name: "Sarah Chen", role: "CTO", image: "/placeholder.svg?height=300&width=300" },
-            { name: "Michael Rodriguez", role: "Head of Blockchain", image: "/placeholder.svg?height=300&width=300" },
-            {
-              name: "Emma Wilson",
-              role: "Chief Sustainability Officer",
-              image: "/placeholder.svg?height=300&width=300",
-            },
-          ].map((member, i) => (
-            <Card key={i}>
-              <CardContent className="p-4 text-center">
-                <img
-                  src={member.image || "/placeholder.svg"}
-                  alt={member.name}
-                  className="w-full aspect-square object-cover rounded-md mb-4"
-                />
-                <h3 className="font-bold">{member.name}</h3>
-                <p className="text-sm text-muted-foreground">{member.role}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+  {[
+    { 
+      name: "Yuvraj Aryan",  
+      imageUrl: "/yuvraj.jpg"
+    },
+    { 
+      name: "Vraj Shah", 
+      imageUrl: "/vraj.jpg"
+    },
+    { 
+      name: "Yash Bhisekar", 
+      imageUrl: "/yash.jpg"
+    },
+    {
+      name: "Sanvi Verma",
+      imageUrl: "/sanvi.jpg"
+    }
+  ].map((person, index) => (
+    <div key={index} className="flex items-center space-x-6 p-6 border rounded-xl shadow-md bg-white">
+      <img 
+        className="h-20 w-20 rounded-full object-cover" 
+        src={person.imageUrl} 
+        alt={person.name} 
+      />
+      <div>
+        <p className="text-xl font-semibold text-gray-900">{person.name}</p>
+      </div>
+    </div>
+  ))}
+</div>
+
       </section>
 
+      {/* CTA Section */}
       <section className="bg-green-600 text-white rounded-lg p-8 text-center space-y-6">
-        <h2 className="text-3xl font-bold">Join the EV Revolution</h2>
-        <p className="max-w-[600px] mx-auto">
-          Be part of the sustainable future of transportation. Sign up today and start using our blockchain-powered EV
-          charging network.
-        </p>
-        <div className="flex justify-center gap-4">
-          <Link href="/register">
-            <Button className="bg-white text-green-600 hover:bg-gray-100">Create Account</Button>
-          </Link>
-          <Link href="/contact">
-            <Button variant="outline" className="border-white text-white hover:bg-green-700">
-              Contact Us
-            </Button>
-          </Link>
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-3xl font-bold">Join the EV Revolution</h2>
+          <p className="mt-4">
+            Be part of the sustainable future of transportation. Sign up today and start using our blockchain-powered EV
+            charging network.
+          </p>
+          <div className="flex justify-center gap-4 mt-6">
+            <Link href="/register">
+              <Button className="bg-white text-green-600 hover:bg-gray-100">Create Account</Button>
+            </Link>
+            <Link href="/contact">
+              <Button variant="outline" className="border-white text-white hover:bg-green-700">
+                Contact Us
+              </Button>
+            </Link>
+          </div>
+        </div>
+        <div className="mt-8 rounded-xl overflow-hidden">
+          <img
+            src="https://images.unsplash.com/photo-1606220838315-056192d5e927?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80"
+            alt="Happy EV owners"
+            className="w-full h-48 object-cover"
+          />
         </div>
       </section>
     </div>
   )
 }
-

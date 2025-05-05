@@ -7,16 +7,27 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Zap, User, ShieldCheck } from "lucide-react"
+import { Zap, User, ShieldCheck, Loader2 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useToast } from "@/components/ui/use-toast"
 
-// Form validation schema
 const loginFormSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
   password: z.string().min(1, { message: "Password is required." }),
@@ -30,7 +41,6 @@ export default function LoginPage() {
   const [activeTab, setActiveTab] = useState<string>("user")
   const [isLoading, setIsLoading] = useState(false)
 
-  // User login form
   const userForm = useForm<z.infer<typeof loginFormSchema>>({
     resolver: zodResolver(loginFormSchema),
     defaultValues: {
@@ -40,7 +50,6 @@ export default function LoginPage() {
     },
   })
 
-  // Admin login form
   const adminForm = useForm<z.infer<typeof loginFormSchema>>({
     resolver: zodResolver(loginFormSchema),
     defaultValues: {
@@ -51,14 +60,30 @@ export default function LoginPage() {
   })
 
   async function onUserSubmit(values: z.infer<typeof loginFormSchema>) {
+    setIsLoading(true)
     try {
-      setIsLoading(true)
-      await login(values.email, values.password, false)
-      toast({
-        title: "Login successful",
-        description: "Welcome back!",
-      })
-      router.push("/dashboard")
+      const success = await login(values.email, values.password, false)
+      if (success) {
+        toast({ 
+          title: "Login successful", 
+          description: "Welcome back! Redirecting to your transactions..." 
+        })
+        
+        // Store user data in localStorage
+        localStorage.setItem('evUser', JSON.stringify({
+          id: `user_${Math.random().toString(36).substring(2, 9)}`,
+          email: values.email,
+          tokenBalance: 100, // Initial token balance
+          lastLogin: new Date().toISOString()
+        }))
+        
+        // Redirect to transactions page after 1.5 seconds
+        setTimeout(() => {
+          router.push("/transactions")
+        }, 1500)
+      } else {
+        throw new Error("Invalid credentials")
+      }
     } catch (error: any) {
       toast({
         title: "Login failed",
@@ -71,14 +96,18 @@ export default function LoginPage() {
   }
 
   async function onAdminSubmit(values: z.infer<typeof loginFormSchema>) {
+    setIsLoading(true)
     try {
-      setIsLoading(true)
-      await login(values.email, values.password, true)
-      toast({
-        title: "Admin login successful",
-        description: "Welcome to the admin dashboard",
-      })
-      router.push("/admin/dashboard")
+      const success = await login(values.email, values.password, true)
+      if (success) {
+        toast({ 
+          title: "Admin login successful", 
+          description: "Welcome to the admin dashboard" 
+        })
+        router.push("/admin/dashboard")
+      } else {
+        throw new Error("Invalid admin credentials")
+      }
     } catch (error: any) {
       toast({
         title: "Admin login failed",
@@ -158,14 +187,18 @@ export default function LoginPage() {
                       </FormItem>
                     )}
                   />
-
                   <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
                     Forgot password?
                   </Link>
                 </div>
 
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Logging in..." : "Log in"}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Logging in...
+                    </>
+                  ) : "Log in"}
                 </Button>
               </form>
             </Form>
@@ -213,14 +246,18 @@ export default function LoginPage() {
                       </FormItem>
                     )}
                   />
-
                   <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
                     Forgot password?
                   </Link>
                 </div>
 
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Logging in..." : "Admin Login"}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Logging in...
+                    </>
+                  ) : "Admin Login"}
                 </Button>
               </form>
             </Form>

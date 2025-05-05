@@ -40,12 +40,12 @@ import dynamic from "next/dynamic"
 import "leaflet/dist/leaflet.css"
 import { useAuth } from "@/context/AuthContext"
 import { useToast } from "@/components/ui/use-toast"
-import { getStations, getFavorites, addFavorite, removeFavorite, getNearbyStations } from "@/lib/stations"
+import { getFavorites, addFavorite, removeFavorite } from "@/lib/stations"
 import { createReservation } from "@/lib/reservations"
 
 const MapComponent = dynamic(
   () => import('./MapComponent').then((mod) => mod.default),
-  { 
+  {
     ssr: false,
     loading: () => (
       <div className="h-[400px] bg-gray-100 flex items-center justify-center flex-col">
@@ -76,15 +76,478 @@ interface ChargingStation {
   distance?: number
 }
 
+interface Transaction {
+  id: string
+  timestamp: string
+  hash: string
+  type: 'charging' | 'payment' | 'reward'
+  stationId: string
+  stationName: string
+  amount: number
+  energy: number
+  status: 'pending' | 'confirmed' | 'failed'
+}
+
+// Complete Pune charging stations data
+const puneChargingStations: ChargingStation[] = [
+  {
+    station_id: 1001,
+    name: "EV Power Hub Koregaon Park",
+    location: "North Main Road, Koregaon Park, Pune",
+    latitude: 18.5362,
+    longitude: 73.8939,
+    price: 12.50,
+    available_ports: 0,
+    total_ports: 6,
+    ports: [
+      {
+        id: 10011,
+        type: "CCS",
+        power: "150 kW",
+        available: 2,
+        pricePerKwh: 12.50
+      },
+      {
+        id: 10012,
+        type: "Type 2",
+        power: "22 kW",
+        available: 2,
+        pricePerKwh: 10.00
+      },
+      {
+        id: 10013,
+        type: "CHAdeMO",
+        power: "50 kW",
+        available: 0,
+        pricePerKwh: 11.00
+      }
+    ]
+  },
+  {
+    station_id: 1002,
+    name: "TataEV Charge Aundh",
+    location: "ITI Road, Aundh, Pune",
+    latitude: 18.5584,
+    longitude: 73.8077,
+    price: 11.75,
+    available_ports: 3,
+    total_ports: 4,
+    ports: [
+      {
+        id: 10021,
+        type: "CCS",
+        power: "120 kW",
+        available: 2,
+        pricePerKwh: 11.75
+      },
+      {
+        id: 10022,
+        type: "Type 2",
+        power: "22 kW",
+        available: 1,
+        pricePerKwh: 9.50
+      }
+    ]
+  },
+  {
+    station_id: 1003,
+    name: "ElectroCharge Viman Nagar",
+    location: "Phoenix Mall, Viman Nagar, Pune",
+    latitude: 18.5679,
+    longitude: 73.9143,
+    price: 13.00,
+    available_ports: 0,
+    total_ports: 8,
+    ports: [
+      {
+        id: 10031,
+        type: "CCS",
+        power: "180 kW",
+        available: 0,
+        pricePerKwh: 13.00
+      },
+      {
+        id: 10032,
+        type: "Type 2",
+        power: "22 kW",
+        available: 0,
+        pricePerKwh: 10.50
+      },
+      {
+        id: 10033,
+        type: "Tesla",
+        power: "250 kW",
+        available: 0,
+        pricePerKwh: 14.00
+      }
+    ]
+  },
+  {
+    station_id: 1004,
+    name: "GreenCharge Kothrud",
+    location: "Paud Road, Kothrud, Pune",
+    latitude: 18.5074,
+    longitude: 73.8077,
+    price: 10.50,
+    available_ports: 5,
+    total_ports: 6,
+    ports: [
+      {
+        id: 10041,
+        type: "CCS",
+        power: "100 kW",
+        available: 3,
+        pricePerKwh: 10.50
+      },
+      {
+        id: 10042,
+        type: "Type 2",
+        power: "22 kW",
+        available: 2,
+        pricePerKwh: 8.00
+      }
+    ]
+  },
+  {
+    station_id: 1005,
+    name: "Ather Grid Hinjewadi",
+    location: "Phase 1, Hinjewadi IT Park, Pune",
+    latitude: 18.5894,
+    longitude: 73.7379,
+    price: 12.00,
+    available_ports: 2,
+    total_ports: 4,
+    ports: [
+      {
+        id: 10051,
+        type: "CCS",
+        power: "150 kW",
+        available: 1,
+        pricePerKwh: 12.00
+      },
+      {
+        id: 10052,
+        type: "Type 2",
+        power: "22 kW",
+        available: 1,
+        pricePerKwh: 9.00
+      }
+    ]
+  },
+  {
+    station_id: 1006,
+    name: "IOCL EV Station Shivajinagar",
+    location: "FC Road, Shivajinagar, Pune",
+    latitude: 18.5314,
+    longitude: 73.8446,
+    price: 11.25,
+    available_ports: 4,
+    total_ports: 6,
+    ports: [
+      {
+        id: 10061,
+        type: "CCS",
+        power: "120 kW",
+        available: 2,
+        pricePerKwh: 11.25
+      },
+      {
+        id: 10062,
+        type: "CHAdeMO",
+        power: "50 kW",
+        available: 1,
+        pricePerKwh: 10.00
+      },
+      {
+        id: 10063,
+        type: "Type 2",
+        power: "22 kW",
+        available: 1,
+        pricePerKwh: 9.00
+      }
+    ]
+  },
+  {
+    station_id: 1007,
+    name: "HPCL Fast Charge Hadapsar",
+    location: "Magarpatta Road, Hadapsar, Pune",
+    latitude: 18.5089,
+    longitude: 73.9260,
+    price: 11.00,
+    available_ports: 2,
+    total_ports: 4,
+    ports: [
+      {
+        id: 10071,
+        type: "CCS",
+        power: "100 kW",
+        available: 1,
+        pricePerKwh: 11.00
+      },
+      {
+        id: 10072,
+        type: "Type 2",
+        power: "22 kW",
+        available: 1,
+        pricePerKwh: 8.50
+      }
+    ]
+  },
+  {
+    station_id: 1008,
+    name: "BatteryZone Baner",
+    location: "Baner Road, Baner, Pune",
+    latitude: 18.5590,
+    longitude: 73.7868,
+    price: 12.75,
+    available_ports: 3,
+    total_ports: 6,
+    ports: [
+      {
+        id: 10081,
+        type: "CCS",
+        power: "150 kW",
+        available: 1,
+        pricePerKwh: 12.75
+      },
+      {
+        id: 10082,
+        type: "CHAdeMO",
+        power: "50 kW",
+        available: 1,
+        pricePerKwh: 11.50
+      },
+      {
+        id: 10083,
+        type: "Type 2",
+        power: "22 kW",
+        available: 1,
+        pricePerKwh: 10.00
+      }
+    ]
+  },
+  {
+    station_id: 1009,
+    name: "VoltHub Sinhagad Road",
+    location: "Sinhagad Road, Pune",
+    latitude: 18.4574,
+    longitude: 73.8183,
+    price: 10.00,
+    available_ports: 6,
+    total_ports: 8,
+    ports: [
+      {
+        id: 10091,
+        type: "CCS",
+        power: "100 kW",
+        available: 3,
+        pricePerKwh: 10.00
+      },
+      {
+        id: 10092,
+        type: "Type 2",
+        power: "22 kW",
+        available: 3,
+        pricePerKwh: 8.00
+      }
+    ]
+  },
+  {
+    station_id: 1010,
+    name: "ChargeZone Kalyani Nagar",
+    location: "Kalyani Nagar, Pune",
+    latitude: 18.5450,
+    longitude: 73.8911,
+    price: 13.50,
+    available_ports: 1,
+    total_ports: 8,
+    ports: [
+      {
+        id: 10101,
+        type: "CCS",
+        power: "180 kW",
+        available: 0,
+        pricePerKwh: 13.50
+      },
+      {
+        id: 10102,
+        type: "Tesla",
+        power: "250 kW",
+        available: 1,
+        pricePerKwh: 14.50
+      },
+      {
+        id: 10103,
+        type: "Type 2",
+        power: "22 kW",
+        available: 0,
+        pricePerKwh: 11.00
+      }
+    ]
+  },
+  {
+    station_id: 1011,
+    name: "EcoCharge Wakad",
+    location: "Hinjewadi Road, Wakad, Pune",
+    latitude: 18.5902,
+    longitude: 73.7605,
+    price: 11.50,
+    available_ports: 3,
+    total_ports: 4,
+    ports: [
+      {
+        id: 10111,
+        type: "CCS",
+        power: "120 kW",
+        available: 2,
+        pricePerKwh: 11.50
+      },
+      {
+        id: 10112,
+        type: "Type 2",
+        power: "22 kW",
+        available: 1,
+        pricePerKwh: 9.00
+      }
+    ]
+  },
+  {
+    station_id: 1012,
+    name: "PowerPlug Warje",
+    location: "Mumbai-Bangalore Highway, Warje, Pune",
+    latitude: 18.4846,
+    longitude: 73.7872,
+    price: 10.75,
+    available_ports: 4,
+    total_ports: 4,
+    ports: [
+      {
+        id: 10121,
+        type: "CCS",
+        power: "100 kW",
+        available: 2,
+        pricePerKwh: 10.75
+      },
+      {
+        id: 10122,
+        type: "CHAdeMO",
+        power: "50 kW",
+        available: 1,
+        pricePerKwh: 9.75
+      },
+      {
+        id: 10123,
+        type: "Type 2",
+        power: "22 kW",
+        available: 1,
+        pricePerKwh: 8.25
+      }
+    ]
+  },
+  {
+    station_id: 1013,
+    name: "SparkEV Camp",
+    location: "Pashan-Sus Road, Pashan, Pune",
+    latitude: 18.5407,
+    longitude: 73.7928,
+    price: 12.25,
+    available_ports: 5,
+    total_ports: 8,
+    ports: [
+      {
+        id: 10131,
+        type: "CCS",
+        power: "150 kW",
+        available: 2,
+        pricePerKwh: 12.25
+      },
+      {
+        id: 10132,
+        type: "Type 2",
+        power: "22 kW",
+        available: 2,
+        pricePerKwh: 9.75
+      },
+      {
+        id: 10133,
+        type: "Tesla",
+        power: "250 kW",
+        available: 1,
+        pricePerKwh: 13.50
+      }
+    ]
+  },
+  {
+    station_id: 1014,
+    name: "BluSmart Kharadi",
+    location: "EON IT Park, Kharadi, Pune",
+    latitude: 18.5519,
+    longitude: 73.9490,
+    price: 11.80,
+    available_ports: 3,
+    total_ports: 6,
+    ports: [
+      {
+        id: 10141,
+        type: "CCS",
+        power: "120 kW",
+        available: 2,
+        pricePerKwh: 11.80
+      },
+      {
+        id: 10142,
+        type: "CHAdeMO",
+        power: "50 kW",
+        available: 0,
+        pricePerKwh: 10.80
+      },
+      {
+        id: 10143,
+        type: "Type 2",
+        power: "22 kW",
+        available: 1,
+        pricePerKwh: 9.30
+      }
+    ]
+  },
+  {
+    station_id: 1015,
+    name: "ZipCharge Kondhwa",
+    location: "NIBM Road, Kondhwa, Pune",
+    latitude: 18.4675,
+    longitude: 73.8908,
+    price: 10.25,
+    available_ports: 2,
+    total_ports: 4,
+    ports: [
+      {
+        id: 10151,
+        type: "CCS",
+        power: "100 kW",
+        available: 1,
+        pricePerKwh: 10.25
+      },
+      {
+        id: 10152,
+        type: "Type 2",
+        power: "22 kW",
+        available: 1,
+        pricePerKwh: 8.75
+      }
+    ]
+  }
+];
 export default function StationsPage() {
-  const { user, token } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
+  const { user, token } = useAuth()
+
+  // State declarations
   const [searchTerm, setSearchTerm] = useState("")
   const [maxDistance, setMaxDistance] = useState(10)
   const [selectedPortTypes, setSelectedPortTypes] = useState<string[]>([])
   const [onlyAvailable, setOnlyAvailable] = useState(false)
-  const [stations, setStations] = useState<ChargingStation[]>([])
+  const [stations, setStations] = useState<ChargingStation[]>(puneChargingStations)
   const [favorites, setFavorites] = useState<Set<number>>(new Set())
   const [selectedStation, setSelectedStation] = useState<ChargingStation | null>(null)
   const [bookingStation, setBookingStation] = useState<ChargingStation | null>(null)
@@ -94,86 +557,138 @@ export default function StationsPage() {
   const [paymentMethod, setPaymentMethod] = useState("token")
   const [bookingConfirmed, setBookingConfirmed] = useState(false)
   const [currentLocation, setCurrentLocation] = useState<[number, number] | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
 
-  // Load stations and favorites
+  // Load favorites and transactions
   useEffect(() => {
-    const loadData = async () => {
+    const loadInitialData = async () => {
       try {
-        setIsLoading(true)
-        const [stationsData, favoritesData] = await Promise.all([
-          currentLocation 
-            ? getNearbyStations(currentLocation[0], currentLocation[1], maxDistance)
-            : getStations(),
-          token ? getFavorites() : Promise.resolve([]),
-        ])
-    
-        // Ensure stationsData is an array
-        setStations(Array.isArray(stationsData) ? stationsData : [])
-        setFavorites(new Set(favoritesData.map((s: any) => s.station_id)))
+        if (token) {
+          const favoritesData = await getFavorites()
+          setFavorites(new Set(favoritesData.map((s: any) => s.station_id)))
+        }
+
+        // Load transactions from localStorage
+        const storedTransactions = localStorage.getItem('evTransactions')
+        if (storedTransactions) {
+          setTransactions(JSON.parse(storedTransactions))
+        }
       } catch (error) {
         toast({
           title: "Error",
-          description: "Failed to load stations",
+          description: "Failed to load initial data",
           variant: "destructive",
         })
-        // Set stations to empty array on error
-        setStations([])
-      } finally {
-        setIsLoading(false)
-      }
+      }
     }
 
-    loadData()
-  }, [token, currentLocation, maxDistance, toast])
+    loadInitialData()
+  }, [token, toast])
 
-  // Filter stations based on search and filters
-  const filteredStations = stations.filter((station) => {
-    const searchLower = searchTerm.toLowerCase()
-    const matchesSearch = searchTerm === "" || 
-      station.name.toLowerCase().includes(searchLower) ||
-      station.location.toLowerCase().includes(searchLower)
+  // Calculate distances when current location changes
+  useEffect(() => {
+    if (currentLocation) {
+      setStations(prevStations =>
+        prevStations.map(station => {
+          const distance = calculateDistance(
+            currentLocation[0],
+            currentLocation[1],
+            station.latitude,
+            station.longitude
+          )
+          return { ...station, distance }
+        })
+      )
+    }
+  }, [currentLocation])
 
-    const matchesPorts = selectedPortTypes.length === 0 || 
-      station.ports.some((port) => selectedPortTypes.includes(port.type))
-    const matchesAvailability = !onlyAvailable || 
-      station.available_ports > 0
+  // Helper functions
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371 // Earth radius in km
+    const dLat = deg2rad(lat2 - lat1)
+    const dLon = deg2rad(lon2 - lon1)
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c // Distance in km
+  }
 
-    return matchesSearch && matchesPorts && matchesAvailability
-  })
-
-  const sortedStations = [...filteredStations].sort((a, b) => 
-    (a.distance || Infinity) - (b.distance || Infinity)
-  )
+  const deg2rad = (deg: number) => deg * (Math.PI / 180)
 
   const togglePortType = (type: string) => {
-    setSelectedPortTypes(prev => 
+    setSelectedPortTypes(prev =>
       prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
     )
   }
-
   const handleBookingSubmit = async () => {
-    if (!bookingStation || !user) return
-
+    if (!bookingStation) return;
+  
     try {
-      await createReservation({
-        stationId: bookingStation.station_id,
-        reservationTime: `${format(bookingDate!, 'yyyy-MM-dd')}T${bookingTime}:00Z`,
-      })
-
-      setBookingConfirmed(true)
+      setIsLoading(true);
+      
+      // Calculate energy used and token reward
+      const hours = bookingDuration / 60; // Convert minutes to hours
+      const energyUsed = hours * 15; // Assuming 15 kWh per hour charging rate
+      const amountSpent = bookingStation.price * energyUsed;
+      const tokenReward = Math.floor(energyUsed * 2); // 2 tokens per kWh
+  
+      // Generate transaction data
+      const txHash = `0x${Array(64).fill(0).map(() => 
+        Math.floor(Math.random() * 16).toString(16)).join('')}`;
+  
+      // Get or create user data
+      let user = JSON.parse(localStorage.getItem('evUser') || {
+        id: `user_${Math.random().toString(36).substring(2, 9)}`,
+        name: "Guest User",
+        tokenBalance: 100, // Default starting balance
+        transactions: []
+      });
+  
+      const newTransaction = {
+        id: `tx-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        hash: txHash,
+        type: 'charging' as const,
+        stationId: bookingStation.station_id.toString(),
+        stationName: bookingStation.name,
+        amount: parseFloat(amountSpent.toFixed(2)),
+        energy: parseFloat(energyUsed.toFixed(1)),
+        duration: bookingDuration,
+        status: 'confirmed' as const,
+        tokenAmount: tokenReward
+      };
+  
+      // Update user data
+      user.tokenBalance = (user.tokenBalance || 0) + tokenReward;
+      user.transactions = [newTransaction, ...(user.transactions || [])];
+      localStorage.setItem('evUser', JSON.stringify(user));
+  
+      // Fix: Ensure the path is a string and properly formatted
+      const redirectPath = `/transactions?${new URLSearchParams({
+        newTx: txHash,
+        reward: tokenReward.toString(),
+        amount: amountSpent.toFixed(2),
+        energy: energyUsed.toFixed(1),
+        duration: bookingDuration.toString(),
+        station: bookingStation.name
+      }).toString()}`;
+  
+      router.push(redirectPath);
+  
+    } catch (error) {
       toast({
-        title: "Reservation created",
-        description: "Your charging session has been booked",
-      })
-    } catch (error: any) {
-      toast({
-        title: "Reservation failed",
-        description: error.message || "Failed to create reservation",
+        title: "Booking failed",
+        description: error instanceof Error ? error.message : "Failed to create booking",
         variant: "destructive",
-      })
+      });
+    } finally {
+      setIsLoading(false);
+      resetBookingForm();
     }
-  }
+  };
 
   const resetBookingForm = () => {
     setBookingStation(null)
@@ -226,12 +741,33 @@ export default function StationsPage() {
     }
   }
 
+  // Filter and sort stations
+  const filteredStations = stations.filter((station) => {
+    const searchLower = searchTerm.toLowerCase()
+    const matchesSearch = searchTerm === "" ||
+      station.name.toLowerCase().includes(searchLower) ||
+      station.location.toLowerCase().includes(searchLower)
+
+    const matchesPorts = selectedPortTypes.length === 0 ||
+      station.ports.some((port) => selectedPortTypes.includes(port.type))
+    const matchesAvailability = !onlyAvailable ||
+      station.available_ports > 0
+    const matchesDistance = !currentLocation ||
+      (station.distance && station.distance <= maxDistance)
+
+    return matchesSearch && matchesPorts && matchesAvailability && matchesDistance
+  })
+
+  const sortedStations = [...filteredStations].sort((a, b) =>
+    (a.distance || Infinity) - (b.distance || Infinity)
+  )
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold">Find Charging Stations</h1>
-        <p className="text-muted-foreground">Locate available charging stations near you</p>
+        <h1 className="text-3xl font-bold">Find Charging Stations in Pune</h1>
+        <p className="text-muted-foreground">Locate available charging stations in Pune</p>
       </div>
 
       {/* Main Content */}
@@ -254,8 +790,8 @@ export default function StationsPage() {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
-                  <Button 
-                    size="icon" 
+                  <Button
+                    size="icon"
                     variant="outline"
                     onClick={() => {
                       navigator.geolocation.getCurrentPosition(
@@ -316,10 +852,10 @@ export default function StationsPage() {
 
               {/* Availability Toggle */}
               <div className="flex items-center space-x-2">
-                <Switch 
-                  id="available-only" 
-                  checked={onlyAvailable} 
-                  onCheckedChange={setOnlyAvailable} 
+                <Switch
+                  id="available-only"
+                  checked={onlyAvailable}
+                  onCheckedChange={setOnlyAvailable}
                 />
                 <Label htmlFor="available-only">Show available stations only</Label>
               </div>
@@ -346,9 +882,9 @@ export default function StationsPage() {
                       <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                       <span className="text-sm">{station.name}</span>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setSelectedStation(station)}
                     >
                       View
@@ -367,8 +903,8 @@ export default function StationsPage() {
           {/* Map Component */}
           <Card>
             <CardContent className="p-0">
-              <MapComponent 
-                sortedStations={sortedStations} 
+              <MapComponent
+                stations={sortedStations}
                 setSelectedStation={setSelectedStation}
                 currentLocation={currentLocation}
                 setCurrentLocation={setCurrentLocation}
@@ -401,8 +937,8 @@ export default function StationsPage() {
                               <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                             )}
                             {station.available_ports > 0 ? (
-                              <Badge 
-                                variant="default" 
+                              <Badge
+                                variant="default"
                                 className="bg-green-100 text-green-800 hover:bg-green-100"
                               >
                                 Available
@@ -433,13 +969,10 @@ export default function StationsPage() {
                           <Button onClick={() => setSelectedStation(station)}>
                             Details
                           </Button>
+                
                           <Button
                             variant="outline"
                             onClick={() => {
-                              if (!token) {
-                                router.push("/login")
-                                return
-                              }
                               setBookingStation(station)
                               setBookingConfirmed(false)
                             }}
@@ -513,9 +1046,9 @@ export default function StationsPage() {
                             </div>
                           </div>
                           <div className="flex gap-2 mt-2">
-                            <Button 
-                              size="sm" 
-                              className="flex-1" 
+                            <Button
+                              size="sm"
+                              className="flex-1"
                               onClick={() => setSelectedStation(station)}
                             >
                               Details
@@ -587,7 +1120,7 @@ export default function StationsPage() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-medium">Price</p>
-                  <p className="text-sm">${selectedStation.price}/kWh</p>
+                  <p className="text-sm">₹{selectedStation.price}/kWh</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-medium">Availability</p>
@@ -607,8 +1140,8 @@ export default function StationsPage() {
                         </p>
                       </div>
                       {port.available > 0 ? (
-                        <Badge 
-                          variant="default" 
+                        <Badge
+                          variant="default"
                           className="bg-green-100 text-green-800 hover:bg-green-100"
                         >
                           {port.available} Available
@@ -624,7 +1157,7 @@ export default function StationsPage() {
               </div>
             </div>
             <DialogFooter className="flex justify-between">
-              <Button 
+              <Button
                 variant="outline"
                 onClick={() => toggleFavorite(selectedStation.station_id)}
               >
@@ -685,10 +1218,10 @@ export default function StationsPage() {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
-                        <Calendar 
-                          mode="single" 
-                          selected={bookingDate} 
-                          onSelect={setBookingDate} 
+                        <Calendar
+                          mode="single"
+                          selected={bookingDate}
+                          onSelect={setBookingDate}
                           initialFocus
                           disabled={(date) => date < new Date()}
                         />
@@ -704,8 +1237,8 @@ export default function StationsPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {Array.from({ length: 24 }).map((_, i) => (
-                          <SelectItem 
-                            key={i} 
+                          <SelectItem
+                            key={i}
                             value={`${i.toString().padStart(2, "0")}:00`}
                           >
                             {i.toString().padStart(2, "0")}:00
@@ -724,8 +1257,8 @@ export default function StationsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {bookingStation.ports.map((port, index) => (
-                        <SelectItem 
-                          key={index} 
+                        <SelectItem
+                          key={index}
                           value={port.type}
                           disabled={port.available === 0}
                         >
@@ -755,7 +1288,7 @@ export default function StationsPage() {
                 <div className="bg-muted p-4 rounded-lg space-y-2">
                   <div className="flex justify-between">
                     <span>Estimated Cost:</span>
-                    <span className="font-bold">${((bookingDuration / 60) * 15 * bookingStation.price).toFixed(2)}</span>
+                    <span className="font-bold">₹{((bookingDuration / 60) * 15 * bookingStation.price).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span>Estimated Energy:</span>

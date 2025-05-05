@@ -5,7 +5,7 @@ import { Icon } from 'leaflet'
 import L from 'leaflet'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import { Zap, X } from "lucide-react"
+import { Zap, X, MapPin } from "lucide-react"
 
 // Fix for default marker icons
 const DefaultIcon = new Icon({
@@ -22,23 +22,65 @@ if (typeof window !== 'undefined') {
   L.Marker.prototype.options.icon = DefaultIcon
 }
 
+// Base64 encoded SVG icons
+const userLocationIconSVG = `data:image/svg+xml;base64,${btoa(`
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#3b82f6">
+    <circle cx="12" cy="12" r="10" />
+  </svg>
+`)}`
+
+const chargingStationIconSVG = `data:image/svg+xml;base64,${btoa(`
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#10b981">
+    <path d="M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66.19-.34.05-.08.07-.12C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15C12.96 17.55 11 21 11 21z"/>
+  </svg>
+`)}`
+
+const busyStationIconSVG = `data:image/svg+xml;base64,${btoa(`
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#ef4444">
+    <path d="M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66.19-.34.05-.08.07-.12C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15C12.96 17.55 11 21 11 21z"/>
+  </svg>
+`)}`
+
 const UserLocationIcon = new Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/149/149060.png',
+  iconUrl: userLocationIconSVG,
   iconSize: [30, 30],
   iconAnchor: [15, 15],
 })
 
-type Station = {
-  id: string
+const AvailableStationIcon = new Icon({
+  iconUrl: chargingStationIconSVG,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+})
+
+const BusyStationIcon = new Icon({
+  iconUrl: busyStationIconSVG,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+})
+
+interface Port {
+  id: number
+  type: string
+  power: string
+  available: number
+  pricePerKwh: number
+}
+
+interface ChargingStation {
+  station_id: number
   name: string
-  coordinates: {
-    lat: number
-    lng: number
-  }
-  ports: {
-    available: number
-    type: string
-  }[]
+  location: string
+  latitude: number
+  longitude: number
+  price: number
+  available_ports: number
+  total_ports: number
+  ports: Port[]
+  isFavorite?: boolean
+  distance?: number
 }
 
 type LiveLocationMarkerProps = {
@@ -64,14 +106,14 @@ const LiveLocationMarker = ({ currentLocation }: LiveLocationMarkerProps) => {
 }
 
 type MapComponentProps = {
-  sortedStations: Station[]
-  setSelectedStation: (station: Station) => void
+  stations: ChargingStation[]
+  setSelectedStation: (station: ChargingStation) => void
   currentLocation: [number, number] | null
   setCurrentLocation: (location: [number, number] | null) => void
 }
 
 export default function MapComponent({ 
-  sortedStations, 
+  stations, 
   setSelectedStation,
   currentLocation,
   setCurrentLocation
@@ -95,7 +137,6 @@ export default function MapComponent({
     const handleError = (error: GeolocationPositionError) => {
       console.error("Geolocation error:", error.message)
       setGeoError(error.message)
-      // Use Pune as fallback location
       setCurrentLocation(puneLocation)
       setMapLoaded(true)
     }
@@ -117,7 +158,6 @@ export default function MapComponent({
         navigator.geolocation.clearWatch(watchId)
       }
     } else {
-      // Browser doesn't support Geolocation
       setGeoError("Geolocation is not supported by your browser")
       setCurrentLocation(puneLocation)
       setMapLoaded(true)
@@ -138,7 +178,7 @@ export default function MapComponent({
             </div>
           )}
           <MapContainer 
-            center={currentLocation || [18.5204, 73.8567]} // Pune coordinates as fallback
+            center={currentLocation || [18.5204, 73.8567]}
             zoom={16} 
             style={{ height: "100%", width: "100%" }}
           >
@@ -149,22 +189,43 @@ export default function MapComponent({
             
             <LiveLocationMarker currentLocation={currentLocation} />
             
-            {sortedStations.map((station) => (
+            {stations?.map((station) => (
               <Marker
-                key={station.id}
-                position={[station.coordinates.lat, station.coordinates.lng]}
+                key={station.station_id}
+                position={[station.latitude, station.longitude]}
+                icon={station.available_ports > 0 ? AvailableStationIcon : BusyStationIcon}
                 eventHandlers={{
                   click: () => setSelectedStation(station),
                 }}
               >
-                <Popup>
-                  <div className="flex items-center gap-1">
-                    {station.ports.some(port => port.available > 0) ? (
-                      <Zap className="inline-block h-4 w-4 text-green-600" />
-                    ) : (
-                      <X className="inline-block h-4 w-4 text-red-600" />
-                    )}
-                    <span>{station.name}</span>
+                <Popup className="min-w-[200px]">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      {station.available_ports > 0 ? (
+                        <Zap className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <X className="h-4 w-4 text-red-600" />
+                      )}
+                      <h3 className="font-medium">{station.name}</h3>
+                    </div>
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <MapPin className="h-3 w-3" />
+                      <span>{station.location}</span>
+                    </div>
+                    <div className="text-sm">
+                      <p>Available: {station.available_ports}/{station.total_ports} ports</p>
+                      <p>Price: ₹{station.price}/kWh</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1 text-xs">
+                      {station.ports.map(port => (
+                        <div key={port.id} className="flex items-center gap-1">
+                          <span>{port.type}:</span>
+                          <span className={port.available > 0 ? "text-green-600" : "text-red-600"}>
+                            {port.available} available
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </Popup>
               </Marker>

@@ -81,20 +81,34 @@ export default function DashboardPage() {
       try {
         setIsLoading(true)
         
-        // Get user data
-        if (token) {
-          const userResponse = await getCurrentUser()
-          setUserData(userResponse)
+        // Get user data from localStorage
+        const storedUser = localStorage.getItem('evUser')
+        if (storedUser) {
+          const userData = JSON.parse(storedUser)
+          setUserData(userData)
           
-          // Get stations and favorites
-          const [stationsData, favoritesData] = await Promise.all([
-            getStations(),
-            getFavorites()
-          ])
-          
-          setStations(stationsData)
-          setFavorites(new Set(favoritesData.map((s: any) => s.station_id)))
+          // If user has a vehicle from registration, add it to vehicles list
+          if (userData.vehicle) {
+            setUserVehicles([{
+              id: 1, // First vehicle gets ID 1
+              make: userData.vehicle.make,
+              model: userData.vehicle.model,
+              year: userData.vehicle.year,
+              batteryCapacity: userData.vehicle.batteryCapacity,
+              chargingPortType: userData.vehicle.chargingPortType,
+              image: userData.vehicle.image || "/img/downloads.jpeg"
+            }])
+          }
         }
+        
+        // Get stations and favorites
+        const [stationsData, favoritesData] = await Promise.all([
+          getStations(),
+          getFavorites()
+        ])
+        
+        setStations(stationsData)
+        setFavorites(new Set(favoritesData.map((s: any) => s.station_id)))
         
         // Simulate location detection
         setCurrentLocation("San Francisco, CA")
@@ -112,6 +126,7 @@ export default function DashboardPage() {
     fetchData()
   }, [token, toast])
 
+  
   const toggleFavorite = async (stationId: number) => {
     if (!token) return
 

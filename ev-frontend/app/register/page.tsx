@@ -7,15 +7,14 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Car, Zap } from "lucide-react"
+import { Car, Zap, Loader2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 
-// Form validation schema
 const userFormSchema = z
   .object({
     name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -27,17 +26,23 @@ const userFormSchema = z
     }),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
+    message: "Passwords don't match",
     path: ["confirmPassword"],
   })
 
 const vehicleFormSchema = z.object({
   make: z.string().min(1, { message: "Vehicle make is required." }),
   model: z.string().min(1, { message: "Vehicle model is required." }),
-  year: z.string().min(4, { message: "Valid year is required." }),
-  battery_capacity: z.string().optional(),
-  charging_port_type: z.string().min(1, { message: "Charging port type is required." }),
+  year: z.string()
+    .min(4, { message: "Year must be 4 digits." })
+    .max(4, { message: "Year must be 4 digits." })
+    .regex(/^\d{4}$/, { message: "Please enter a valid year." }),
+  battery_capacity: z.string()
+    .refine((val) => !val || !isNaN(Number(val)), { message: "Must be a number" })
+    .optional(),
+  charging_port_type: z.string().min(1, { message: "Please select a charging port type." }),
 })
+
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -46,7 +51,6 @@ export default function RegisterPage() {
   const [hasVehicle, setHasVehicle] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // User form
   const userForm = useForm<z.infer<typeof userFormSchema>>({
     resolver: zodResolver(userFormSchema),
     defaultValues: {
@@ -58,7 +62,6 @@ export default function RegisterPage() {
     },
   })
 
-  // Vehicle form
   const vehicleForm = useForm<z.infer<typeof vehicleFormSchema>>({
     resolver: zodResolver(vehicleFormSchema),
     defaultValues: {
@@ -70,47 +73,59 @@ export default function RegisterPage() {
     },
   })
 
-  async function handleFinalSubmit(userData: z.infer<typeof userFormSchema>, vehicleData: z.infer<typeof vehicleFormSchema>) {
-    setIsSubmitting(true)
-    
-    try {
-      const payload = {
-        name: userData.name,
-        email: userData.email,
-        password: userData.password,
-        vehicle: hasVehicle ? vehicleData : null
+  // In RegisterPage.tsx, update the handleFinalSubmit function
+async function handleFinalSubmit(
+  userData: z.infer<typeof userFormSchema>,
+  vehicleData: z.infer<typeof vehicleFormSchema>
+) {
+  setIsSubmitting(true)
+  
+  try {
+    if (hasVehicle) {
+      const vehicleValidation = vehicleFormSchema.safeParse(vehicleData)
+      if (!vehicleValidation.success) {
+        vehicleValidation.error.issues.forEach((issue) => {
+          vehicleForm.setError(issue.path[0] as any, {
+            message: issue.message
+          })
+        })
+        setStep(2)
+        throw new Error("Please fix vehicle form errors")
       }
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/signup`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.message || "Registration failed")
-      }
-
-      toast({
-        title: "Registration Successful",
-        description: "Your account has been created successfully!",
-      })
-
-      router.push("/login")
-    } catch (error: any) {
-      toast({
-        title: "Registration Failed",
-        description: error.message || "An error occurred during registration",
-        variant: "destructive",
-      })
-    } finally {
-      setIsSubmitting(false)
     }
+
+    // Store user data in localStorage
+    localStorage.setItem('evUser', JSON.stringify({
+      name: userData.name,
+      email: userData.email,
+      tokenBalance: 100, // Initial tokens
+      vehicle: hasVehicle ? {
+        make: vehicleData.make,
+        model: vehicleData.model,
+        year: vehicleData.year,
+        batteryCapacity: vehicleData.battery_capacity || '',
+        chargingPortType: vehicleData.charging_port_type,
+        image: "/img/downloads.jpeg" // Default image
+      } : null
+    }))
+
+    toast({
+      title: "Success",
+      description: "Account created successfully! 100 EVT tokens awarded.",
+    })
+
+    // Redirect to dashboard instead of transactions
+    router.push("/dashboard")
+  } catch (error) {
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "Registration failed",
+      variant: "destructive",
+    })
+  } finally {
+    setIsSubmitting(false)
   }
+}
 
   function onUserSubmit(values: z.infer<typeof userFormSchema>) {
     if (hasVehicle) {
@@ -144,51 +159,53 @@ export default function RegisterPage() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <div
-                className={`flex items-center justify-center w-8 h-8 rounded-full ${step === 1 ? "bg-green-600 text-white" : "bg-muted text-muted-foreground"}`}
-              >
+              <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                step === 1 ? "bg-green-600 text-white" : "bg-muted text-muted-foreground"
+              }`}>
                 1
               </div>
               <div className="w-8 h-0.5 bg-muted"></div>
-              <div
-                className={`flex items-center justify-center w-8 h-8 rounded-full ${step === 2 ? "bg-green-600 text-white" : "bg-muted text-muted-foreground"}`}
-              >
+              <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                step === 2 ? "bg-green-600 text-white" : "bg-muted text-muted-foreground"
+              }`}>
                 2
               </div>
             </div>
           </div>
         </CardHeader>
+
         <CardContent>
           {step === 1 ? (
             <Form {...userForm}>
               <form onSubmit={userForm.handleSubmit(onUserSubmit)} className="space-y-6">
-                <FormField
-                  control={userForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="John Doe" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={userForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input type="email" placeholder="john.doe@example.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={userForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="John Doe" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={userForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input placeholder="john@example.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
@@ -198,7 +215,7 @@ export default function RegisterPage() {
                       <FormItem>
                         <FormLabel>Password</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="********" {...field} />
+                          <Input type="password" placeholder="••••••••" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -211,7 +228,7 @@ export default function RegisterPage() {
                       <FormItem>
                         <FormLabel>Confirm Password</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="********" {...field} />
+                          <Input type="password" placeholder="••••••••" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -219,49 +236,51 @@ export default function RegisterPage() {
                   />
                 </div>
 
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="hasVehicle"
-                      checked={hasVehicle}
-                      onCheckedChange={(checked) => setHasVehicle(checked as boolean)}
-                    />
-                    <label
-                      htmlFor="hasVehicle"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      I have an electric vehicle to register
-                    </label>
-                  </div>
+                <FormField
+                  control={userForm.control}
+                  name="termsAccepted"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>
+                          I agree to the{" "}
+                          <Link href="/terms" className="text-blue-600 hover:underline">
+                            Terms and Conditions
+                          </Link>
+                        </FormLabel>
+                      </div>
+                    </FormItem>
+                  )}
+                />
 
-                  <FormField
-                    control={userForm.control}
-                    name="termsAccepted"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                        <FormControl>
-                          <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>
-                            I accept the{" "}
-                            <Link href="/terms" className="text-blue-600 hover:underline">
-                              terms and conditions
-                            </Link>
-                          </FormLabel>
-                          <FormDescription>
-                            You must agree to our terms and conditions to create an account.
-                          </FormDescription>
-                          <FormMessage />
-                        </div>
-                      </FormItem>
-                    )}
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="hasVehicle"
+                    checked={hasVehicle}
+                    onCheckedChange={(checked) => setHasVehicle(checked as boolean)}
                   />
+                  <label
+                    htmlFor="hasVehicle"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    I have an electric vehicle
+                  </label>
                 </div>
 
                 <div className="flex justify-end">
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Processing..." : hasVehicle ? "Next: Vehicle Details" : "Create Account"}
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : "Next"}
                   </Button>
                 </div>
               </form>
@@ -281,9 +300,15 @@ export default function RegisterPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Vehicle Make</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select 
+                          onValueChange={(value) => {
+                            field.onChange(value)
+                            vehicleForm.setValue('make', value)
+                          }}
+                          value={field.value}
+                        >
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger className="w-full">
                               <SelectValue placeholder="Select make" />
                             </SelectTrigger>
                           </FormControl>
@@ -311,7 +336,15 @@ export default function RegisterPage() {
                       <FormItem>
                         <FormLabel>Vehicle Model</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., Model 3, Leaf, Bolt" {...field} />
+                          <Input 
+                            placeholder="e.g., Model 3, Leaf, Bolt" 
+                            {...field}
+                            onChange={(e) => {
+                              field.onChange(e.target.value)
+                              vehicleForm.setValue('model', e.target.value)
+                            }}
+                            value={field.value}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -327,7 +360,15 @@ export default function RegisterPage() {
                       <FormItem>
                         <FormLabel>Year</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., 2023" {...field} />
+                          <Input
+                            placeholder="e.g., 2023"
+                            value={field.value}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, '').slice(0, 4)
+                              field.onChange(value)
+                              vehicleForm.setValue('year', value)
+                            }}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -340,7 +381,13 @@ export default function RegisterPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Charging Port Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select 
+                          onValueChange={(value) => {
+                            field.onChange(value)
+                            vehicleForm.setValue('charging_port_type', value)
+                          }}
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select port type" />
@@ -368,7 +415,17 @@ export default function RegisterPage() {
                     <FormItem>
                       <FormLabel>Battery Capacity (kWh)</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., 75" {...field} />
+                        <Input 
+                          placeholder="e.g., 75" 
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          {...field}
+                          onChange={(e) => {
+                            field.onChange(e.target.value)
+                            vehicleForm.setValue('battery_capacity', e.target.value)
+                          }}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -385,13 +442,19 @@ export default function RegisterPage() {
                     Back
                   </Button>
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Creating Account..." : "Create Account"}
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating Account...
+                      </>
+                    ) : "Create Account"}
                   </Button>
                 </div>
               </form>
             </Form>
           )}
         </CardContent>
+
         <CardFooter className="flex flex-col space-y-4 border-t pt-6">
           <div className="text-center w-full">
             <p className="text-sm text-muted-foreground">
